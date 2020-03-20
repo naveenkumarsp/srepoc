@@ -1,0 +1,56 @@
+# The full config is at:
+#   https://prometheus.io/docs/operating/configuration/
+
+global:
+  # How frequently to scrape targets by default.
+  scrape_interval: 15s
+  evaluation_interval: 10s
+rule_files:
+ - rules.yml
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+       - localhost:9093
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: 'prometheus'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          name: 'prometheus'
+          group: 'monitoring'
+          
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:9100']
+        labels:
+          name: 'grafana'
+          group: 'monitoring'
+          
+  - job_name: 'appserver1'
+    static_configs:
+      - targets: ['appserver1:9100']
+        labels:
+          name: 'appserver1'
+          arch: 'x86'
+          group: 'appserver'
+
+  - job_name: 'appserver2'
+    static_configs:
+      - targets: ['appserver2:9100']
+        labels:
+          name: 'appserver2'
+          arch: 'x86'
+          group: 'appserver'
+          
+  - job_name: 'bootstrap'
+    static_configs:
+      - targets: ['bootstrap:9100']
+        labels:
+          name: 'bootstrap'
+          arch: 'x86'
+          group: 'bootstrap'

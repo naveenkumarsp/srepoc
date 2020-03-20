@@ -1,0 +1,78 @@
+---
+
+# ===========================================================================
+# Configure grafana server specific setup 
+# ===========================================================================
+- hosts: grafana
+  vars:
+    GRAFANA_VERSION: '6.4.3'
+  become: true
+  tasks:        
+    - name: "Install the Grafana server from .deb file."
+      apt:
+        #deb: grafana_{{GRAFANA_VERSION}}_amd64.deb
+        deb: https://dl.grafana.com/oss/release/grafana_{{GRAFANA_VERSION}}_amd64.deb
+
+    - name: "Copy Grafana configuration file."
+      copy:
+        src: grafana.ini
+        dest: /etc/grafana/grafana.ini
+      notify: event_restart_grafana
+
+    - name: "Ensure Grafana is started and starts at host boot."
+      service:
+        name: grafana-server
+        enabled: true
+        state: started 
+        
+    - pause: seconds=10
+    
+    - name: "Check if Grafana is accessible."
+      uri:
+        url: http://127.0.0.1:3000
+        method: GET
+        status_code: 200
+
+    - name: "Add Prometheus as datasource to Grafana."
+      vars:
+        prometheus_datasource:
+          name: "prometheus"
+          type: "prometheus"
+          url: "http://prometheus:9090"
+          access: "proxy"
+          isDefault: true
+          basicAuth: false
+      uri:
+        url: http://127.0.0.1:3000/api/datasources
+        method: POST
+        body: "{{ prometheus_datasource | to_json }}"
+        body_format: json
+        user: admin
+        password: admin
+        force_basic_auth: yes
+        status_code: 200,500  # 500 means, the datasource is already added
+        headers:
+          Content-Type: "application/json"
+          Accept: "application/json"
+          
+    - name: "Upload the example Grafana dashboard."
+      uri:
+        url: http://127.0.0.1:3000/api/dashboards/db
+        method: POST
+        body: "{{ lookup('file', 'infra-node-metrics.json') }}"
+        body_format: json
+        user: admin
+        password: admin
+        force_basic_auth: yes
+        status_code: 200
+        headers:
+          Content-Type: "application/json"
+          Accept: "application/json"
+
+  # --- After all tasks are executed (if notified) --------------------------
+  handlers:
+    - name: "Restart the Grafana service."
+      service:
+        name: grafana-server
+        state: restarted
+      listen: event_restart_grafana

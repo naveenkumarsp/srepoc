@@ -1,0 +1,17 @@
+global:
+  slack_api_url: https://hooks.slack.com/services/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
+
+route:
+  group_by: ['instance', 'severity']
+  group_wait: 30s
+  group_interval: 1m
+  repeat_interval: 10m
+  routes:
+  receiver: 'alert-team'
+
+receivers:
+- name: 'alert-team'
+  slack_configs:
+  - channel: "#prom-alerts"
+    text: "summary: {{ .CommonAnnotations.summary }}\ndescription: {{ .CommonAnnotations.description }}"
+    

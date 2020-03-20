@@ -1,0 +1,59 @@
+---
+# ===========================================================================
+# Do setup on all hosts we want to monitor
+# ===========================================================================
+- hosts: localhost  # we want the metrics of the Boot strap server too
+  vars:
+    ansible_connection: local
+    ansible_python_interpreter: "{{ansible_playbook_python}}"
+    NODE_VERSION: '0.18.1'
+    NODE_SRC_LOCATION: 'https://github.com/prometheus/node_exporter/releases/download'
+    NODE_SRC_FILE: "{{NODE_SRC_LOCATION}}/v{{NODE_VERSION}}/node_exporter-{{NODE_VERSION}}.linux-amd64.tar.gz"
+  become: true
+
+  tasks:
+    - name: "Un-archive the node-exporter"
+      unarchive:
+        src: '{{NODE_SRC_FILE}}'
+        dest: /tmp/
+        remote_src: yes
+     
+    - name: "Create a user for node-exporter"
+      user:
+        name: node_exporter
+        shell: /bin/false
+
+    - name: "Copy the node exporter to local bin"
+      copy:
+        src: /tmp/node_exporter-{{NODE_VERSION}}.linux-amd64/node_exporter
+        dest: /usr/local/bin/node_exporter
+        owner: node_exporter 
+        group: node_exporter 
+        mode: 0755
+        remote_src: True
+        
+    - name: "Create a custom service for Node_exporter"
+      copy: 
+        src: node_exporter.service 
+        dest: /etc/systemd/system/node_exporter.service
+        owner: node_exporter 
+        group: node_exporter 
+        mode: 0755
+        
+    - name: "Start the Node_exporter service"
+      service:
+        name: node_exporter
+        enabled: true
+        state: started
+        
+    - name: "Ensure the Node Exporter is started and starts at host boot."
+      service:
+        name: node_exporter
+        enabled: true
+        state: started
+
+    - name: "Check if the service emits metrics."
+      uri:
+        url: http://127.0.0.1:9100/metrics
+        method: GET
+        status_code: 200

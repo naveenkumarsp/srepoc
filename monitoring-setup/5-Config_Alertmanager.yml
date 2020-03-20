@@ -1,0 +1,93 @@
+---
+
+# ===========================================================================
+#   Alertmanager setup
+# ===========================================================================
+- hosts: prometheus
+  vars:
+    ALERTMANAGER_VERSION: '0.19.0'
+    ALERTMANAGER_SRC_URL: 'https://github.com/prometheus/alertmanager/releases/download/'
+    ALERTMANAGER_SRC_FILE: "{{ALERTMANAGER_SRC_URL}}/v{{ALERTMANAGER_VERSION}}/alertmanager-{{ALERTMANAGER_VERSION}}.linux-amd64.tar.gz"
+  become: true
+  tasks:
+    - name: Creating alertmanager user group
+      group: name="alertmanager"
+      become: true
+
+    - name: Creating alertmanager user
+      user:
+        name: "alertmanager"
+        group: "alertmanager"
+        system: yes
+        shell: "/sbin/nologin"
+        comment: "alertmanager nologin User"
+        createhome: "no"
+        state: present
+
+    - name: Download alertmanager
+      unarchive:
+        src: '{{ALERTMANAGER_SRC_FILE}}'
+        dest: /tmp/
+        remote_src: yes
+
+    - name: Copy alertmanager executable to bin
+      copy:
+        src: "/tmp/alertmanager-{{ ALERTMANAGER_VERSION }}.linux-amd64/alertmanager"
+        dest: "/usr/local/bin/alertmanager"
+        owner: "alertmanager"
+        group: "alertmanager"
+        remote_src: yes
+        mode: 0755
+
+    - name: Delete alertmanager tmp folder
+      file:
+        path: '/tmp/alertmanager-{{ ALERTMANAGER_VERSION }}.linux-amd64'
+        state: absent
+
+    - name: Creates data directory
+      file: 
+        path: "/opt/alertmanager/"
+        state: directory
+        owner: "alertmanager"
+        group: "alertmanager"
+        mode: 0755
+
+    - name: Creates config directory
+      file: 
+        path: "/etc/alertmanager/"
+        state: directory
+        owner: "alertmanager"
+        group: "alertmanager"
+        mode: 0755
+
+    - name: Copy config file
+      copy:
+        src: "alertmanager.yml"
+        dest: /etc/alertmanager/alertmanager.yml
+
+    - name: Copy systemd init file
+      template:
+        src: alertmanager.service
+        dest: /etc/systemd/system/alertmanager.service
+      notify: event_restart_alertmanager
+
+    - name: Start alertmanager service
+      service:
+        name: alertmanager
+        state: started
+        enabled: yes
+        
+    - pause: seconds=10
+    
+    - name: Check if alertmanager is accessible
+      uri:
+        url: http://localhost:9093
+        method: GET
+        status_code: 200
+  # --- After all tasks are executed (if notified) --------------------------
+  handlers:
+    - name: "Restart the alertmanager service."
+      service:
+        name: alertmanager
+        state: restarted
+      listen: event_restart_alertmanager
