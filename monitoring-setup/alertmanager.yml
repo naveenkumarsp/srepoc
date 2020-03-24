@@ -1,6 +1,6 @@
 alertmanager:
     global:
-      slack_api_url: https://hooks.slack.com/services/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
+      slack_api_url: https://hooks.slack.com/services/*****************
     receivers:
     - name: 'alert-team'
       slack_configs:
@@ -10,7 +10,7 @@ alertmanager:
 
     - name: 'slack_rundeck'
       slack_configs:
-        - api_url: https://hooks.slack.com/services/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
+        - api_url: https://hooks.slack.com/services/**************************
           channel: '#rundeck'
       webhook_configs:
       - url: 'http://rundeck:4440/api/34/webhook/3LBcTC8zd28kDpFxNiLIYxYztYu3uHgc#appserverprobe'
