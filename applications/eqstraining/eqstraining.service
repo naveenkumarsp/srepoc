@@ -1,0 +1,11 @@
+[Unit]
+Description=eqstraining
+
+[Service]
+Type=simple
+Restart=on-success
+RestartSec=5s
+ExecStart=/vagrant/applications/eqstraining/eqstraining.sh
+
+[Install]
+WantedBy=multi-user.target

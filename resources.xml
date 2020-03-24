@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project>
+  <node name="rundeck" description="Rundeck server node" tags="" hostname="rundeck" osArch="amd64" osFamily="unix" osName="Linux" osVersion="4.15.0-76-generic" username="vagrant"/>
+  <node name="appserver1" description="App server1" tags="apps" hostname="appserver1" osArch="amd64" osFamily="unix" osName="Linux" osVersion="4.15.0-76-generic" username="vagrant"/>
+  <node name="appserver2" description="App server2" tags="apps" hostname="appserver2" osArch="amd64" osFamily="unix" osName="Linux" osVersion="4.15.0-76-generic" username="vagrant"/>
+  <node name="dbserver1" description="Database server1" tags="db" hostname="dbserver1" osArch="amd64" osFamily="unix" osName="Linux" osVersion="4.15.0-76-generic" username="vagrant"/>
+  <node name="prometheus" description="Prometheus server" tags="monitoring" hostname="prometheus" osArch="amd64" osFamily="unix" osName="Linux" osVersion="4.15.0-76-generic" username="vagrant"/>
+  <node name="grafana" description="Grafana server" tags="monitoring" hostname="grafana" osArch="amd64" osFamily="unix" osName="Linux" osVersion="4.15.0-76-generic" username="vagrant"/>
+</project>

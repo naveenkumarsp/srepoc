@@ -52,6 +52,6 @@
 
     - name: "Check if the service emits metrics."
       uri:
-        url: http://127.0.0.1:9100/metrics
+        url: http://127.0.0.1:9115/metrics
         method: GET
         status_code: 200

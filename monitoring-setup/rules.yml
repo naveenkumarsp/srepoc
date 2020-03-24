@@ -21,7 +21,7 @@ groups:
 
     - alert: ExporterDown
       expr: up == 0
-      for: 2m
+      for: 30s
       labels:
         severity: warning
       annotations:
@@ -235,7 +235,7 @@ groups:
         summary: "StatefulSet down (instance {{ $labels.instance }})"
         description: "A StatefulSet went down\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
         
- - name: Application stack
+ - name: Node exporter stack
    rules:
     - alert: OutOfMemory
       expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100 < 10
@@ -637,3 +637,449 @@ groups:
         summary: "Disk down (instance {{ $labels.instance }})"
         description: "Minio Disk is down\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
 
+ - name: Black Box stack
+   rules:
+    - alert: BlackboxSlowProbe
+      expr: avg_over_time(probe_duration_seconds[1m]) > 1
+      for: 10s 
+      labels:
+        severity: warning
+      annotations:
+        summary: "Blackbox slow probe (instance {{ $labels.instance }})"
+        description: "Blackbox probe took more than 1s to complete\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: BlackboxProbeHttpFailure
+      expr: probe_http_status_code <= 199 OR probe_http_status_code >= 400
+      for: 10s
+      labels:
+        severity: error
+      annotations:
+        summary: "Blackbox probe HTTP failure (instance {{ $labels.instance }})"
+        description: "HTTP status code is not 200-399\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: BlackboxSslCertificateWillExpireSoon
+      expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 30
+      for: 10s
+      labels:
+        severity: warning
+      annotations:
+        summary: "Blackbox SSL certificate will expire soon (instance {{ $labels.instance }})"
+        description: "SSL certificate expires in 30 days\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: BlackboxSslCertificateWillExpireSoon
+      expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 3
+      for: 10s
+      labels:
+        severity: error
+      annotations:
+        summary: "Blackbox SSL certificate will expire soon (instance {{ $labels.instance }})"
+        description: "SSL certificate expires in 3 days\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: BlackboxSslCertificateExpired
+      expr: probe_ssl_earliest_cert_expiry - time() <= 0
+      for: 10s
+      labels:
+        severity: error
+      annotations:
+        summary: "Blackbox SSL certificate expired (instance {{ $labels.instance }})"
+        description: "SSL certificate has expired already\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: BlackboxProbeSlowHttp
+      expr: avg_over_time(probe_http_duration_seconds[1m]) > 1
+      for: 10s
+      labels:
+        severity: warning
+      annotations:
+        summary: "Blackbox probe slow HTTP (instance {{ $labels.instance }})"
+        description: "HTTP request took more than 1s\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: BlackboxProbeSlowPing
+      expr: avg_over_time(probe_icmp_duration_seconds[1m]) > 1
+      for: 10s
+      labels:
+        severity: warning
+      annotations:
+        summary: "Blackbox probe slow ping (instance {{ $labels.instance }})"
+        description: "Blackbox ping took more than 1s\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+ - name: Application Runtime  
+   rules:
+    - alert: ApacheDown
+      expr: apache_up == 0
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "Apache down (instance {{ $labels.instance }})"
+        description: "Apache down\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: ApacheWorkersLoad
+      expr: (sum by (instance) (apache_workers{state="busy"}) / sum by (instance) (apache_scoreboard) ) * 100 > 80
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "Apache workers load (instance {{ $labels.instance }})"
+        description: "Apache workers in busy state approach the max workers count 80% workers busy on {{ $labels.instance }}\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: ApacheRestart
+      expr: apache_uptime_seconds_total / 60 < 1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Apache restart (instance {{ $labels.instance }})"
+        description: "Apache has just been restarted, less than one minute ago.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: NginxHighHttp4xxErrorRate
+      expr: sum(rate(nginx_http_requests_total{status=~"^4.."}[1m])) / sum(rate(nginx_http_requests_total[1m])) * 100 > 5
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "Nginx high HTTP 4xx error rate (instance {{ $labels.instance }})"
+        description: "Too many HTTP requests with status 4xx (> 5%)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: NginxHighHttp5xxErrorRate
+      expr: sum(rate(nginx_http_requests_total{status=~"^5.."}[1m])) / sum(rate(nginx_http_requests_total[1m])) * 100 > 5
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "Nginx high HTTP 5xx error rate (instance {{ $labels.instance }})"
+        description: "Too many HTTP requests with status 5xx (> 5%)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: NginxLatencyHigh
+      expr: histogram_quantile(0.99, sum(rate(nginx_http_request_duration_seconds_bucket[30m])) by (host, node)) > 10
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Nginx latency high (instance {{ $labels.instance }})"
+        description: "Nginx p99 latency is higher than 10 seconds\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: HaproxyDown
+      expr: haproxy_up < 1
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "HAProxy down (instance {{ $labels.instance }})"
+        description: "HAProxy down\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: HaproxyHighHttp4xxErrorRateBackend
+      expr: (sum by (backend) (irate(haproxy_server_http_responses_total{code="4xx"}[1m])) / sum by (backend) (irate(haproxy_server_http_responses_total{}[1m])) * 100)> 2
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "HAProxy high HTTP 4xx error rate backend (instance {{ $labels.instance }})"
+        description: "Too many HTTP requests with status 4xx (> 5%) on backend {{ $labels.fqdn }}/{{ $labels.backend }}\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: HaproxyHighHttp4xxErrorRateServer
+      expr: (sum by (server) (irate(haproxy_server_http_responses_total{code="4xx"}[1m]))) / (sum by (backend) (irate(haproxy_server_http_responses_total{}[1m]))) * 100 > 2
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "HAProxy high HTTP 4xx error rate server (instance {{ $labels.instance }})"
+        description: "Too many HTTP requests with status 4xx (> 5%) on server {{ $labels.server }}\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: HaproxyHighHttp5xxErrorRateServer
+      expr: (sum by (server) (irate(haproxy_server_http_responses_total{code="5xx"}[1m])) / sum by (backend) (irate(haproxy_server_http_responses_total{}[1m])) * 100) > 2
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "HAProxy high HTTP 5xx error rate server (instance {{ $labels.instance }})"
+        description: "Too many HTTP requests with status 5xx (> 5%) on server {{ $labels.server }}\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: HaproxyBackendConnectionErrors
+      expr: sum by (backend) (rate(haproxy_backend_connection_errors_total[1m]) * 100) > 2
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "HAProxy backend connection errors (instance {{ $labels.instance }})"
+        description: "Too many connection errors to {{ $labels.fqdn }}/{{ $labels.backend }} backend (> 5%). Request throughput may be to high.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: HaproxyServerResponseErrors
+      expr: sum by (server) (rate(haproxy_server_response_errors_total[1m])) * 100 > 2
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "HAProxy server response errors (instance {{ $labels.instance }})"
+        description: "Too many response errors to {{ $labels.server }} server (> 5%).\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: HaproxyServerConnectionErrors
+      expr: sum by (server) (rate(haproxy_server_connection_errors_total[1m]) * 100) > 2
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "HAProxy server connection errors (instance {{ $labels.instance }})"
+        description: "Too many connection errors to {{ $labels.server }} server (> 5%). Request throughput may be to high.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: HaproxyPendingRequests
+      expr: sum by (backend) (haproxy_backend_current_queue) > 0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "HAProxy pending requests (instance {{ $labels.instance }})"
+        description: "Some HAProxy requests are pending on {{ $labels.fqdn }}/{{ $labels.backend }} backend\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: HaproxyHttpSlowingDown
+      expr: avg by (backend) (haproxy_backend_http_total_time_average_seconds) > 2
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "HAProxy HTTP slowing down (instance {{ $labels.instance }})"
+        description: "Average request time is increasing\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: HaproxyRetryHigh
+      expr: rate(haproxy_backend_retry_warnings_total[1m]) > 10
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "HAProxy retry high (instance {{ $labels.instance }})"
+        description: "High rate of retry on {{ $labels.fqdn }}/{{ $labels.backend }} backend\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: HaproxyBackendDown
+      expr: haproxy_backend_up < 1
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "HAProxy backend down (instance {{ $labels.instance }})"
+        description: "HAProxy backend is down\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: HaproxyServerDown
+      expr: haproxy_server_up < 1
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "HAProxy server down (instance {{ $labels.instance }})"
+        description: "HAProxy server is down\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: HaproxyServerHealthcheckFailure
+      expr: increase(haproxy_server_check_failures_total[1m]) > 0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "HAProxy server healthcheck failure (instance {{ $labels.instance }})"
+        description: "Some server healthcheck are failing on {{ $labels.server }}\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: JvmMemoryFillingUp
+      expr: jvm_memory_bytes_used / jvm_memory_bytes_max{area="heap"} > 0.8
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "JVM memory filling up (instance {{ $labels.instance }})"
+        description: "JVM memory is filling up (> 80%)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+ - name: PostgreSQL  
+   rules:
+    - alert: PostgresqlDown
+      expr: pg_up == 0
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "Postgresql down (instance {{ $labels.instance }})"
+        description: "Postgresql instance is down\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: PostgresqlRestarted
+      expr: time() - pg_postmaster_start_time_seconds < 60
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "Postgresql restarted (instance {{ $labels.instance }})"
+        description: "Postgresql restarted\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: PostgresqlExporterError
+      expr: pg_exporter_last_scrape_error > 0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Postgresql exporter error (instance {{ $labels.instance }})"
+        description: "Postgresql exporter is showing errors. A query may be buggy in query.yaml\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+ 
+    - alert: PostgresqlTableNotVaccumed
+      expr: time() - pg_stat_user_tables_last_autovacuum > 60 * 60 * 24
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Postgresql table not vaccumed (instance {{ $labels.instance }})"
+        description: "Table has not been vaccum for 24 hours\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: PostgresqlTableNotAnalyzed
+      expr: time() - pg_stat_user_tables_last_autoanalyze > 60 * 60 * 24
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Postgresql table not analyzed (instance {{ $labels.instance }})"
+        description: "Table has not been analyzed for 24 hours\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: PostgresqlTooManyConnections
+      expr: sum by (datname) (pg_stat_activity_count{datname!~"template.*|postgres"}) > pg_settings_max_connections * 0.9
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Postgresql too many connections (instance {{ $labels.instance }})"
+        description: "PostgreSQL instance has too many connections\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: PostgresqlNotEnoughConnections
+      expr: sum by (datname) (pg_stat_activity_count{datname!~"template.*|postgres"}) < 5
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Postgresql not enough connections (instance {{ $labels.instance }})"
+        description: "PostgreSQL instance should have more connections (> 5)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: PostgresqlDeadLocks
+      expr: rate(pg_stat_database_deadlocks{datname!~"template.*|postgres"}[1m]) > 0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Postgresql dead locks (instance {{ $labels.instance }})"
+        description: "PostgreSQL has dead-locks\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: PostgresqlSlowQueries
+      expr: rate(pg_slow_queries[1m]) * 60 > 10
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Postgresql slow queries (instance {{ $labels.instance }})"
+        description: "PostgreSQL executes slow queries (> 1min)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: PostgresqlHighRollbackRate
+      expr: rate(pg_stat_database_xact_rollback{datname!~"template.*"}[3m]) / rate(pg_stat_database_xact_commit{datname!~"template.*"}[3m]) > 0.02
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Postgresql high rollback rate (instance {{ $labels.instance }})"
+        description: "Ratio of transactions being aborted compared to committed is > 2 %\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: PostgresqlCommitRateLow
+      expr: rate(pg_stat_database_xact_commit[1m]) < 10
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "Postgresql commit rate low (instance {{ $labels.instance }})"
+        description: "Postgres seems to be processing very few transactions\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: PostgresqlLowXidConsumption
+      expr: rate(pg_txid_current[1m]) < 5
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Postgresql low XID consumption (instance {{ $labels.instance }})"
+        description: "Postgresql seems to be consuming transaction IDs very slowly\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: PostgresqllowXlogConsumption
+      expr: rate(pg_xlog_position_bytes[1m]) < 100
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Postgresqllow XLOG consumption (instance {{ $labels.instance }})"
+        description: "Postgres seems to be consuming XLOG very slowly\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: PostgresqlWaleReplicationStopped
+      expr: rate(pg_xlog_position_bytes[1m]) == 0
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "Postgresql WALE replication stopped (instance {{ $labels.instance }})"
+        description: "WAL-E replication seems to be stopped\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: PostgresqlHighRateStatementTimeout
+      expr: rate(postgresql_errors_total{type="statement_timeout"}[5m]) > 3
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "Postgresql high rate statement timeout (instance {{ $labels.instance }})"
+        description: "Postgres transactions showing high rate of statement timeouts\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: PostgresqlHighRateDeadlock
+      expr: rate(postgresql_errors_total{type="deadlock_detected"}[1m]) * 60 > 1
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "Postgresql high rate deadlock (instance {{ $labels.instance }})"
+        description: "Postgres detected deadlocks\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+ 
+    - alert: PostgresqlUnusedReplicationSlot
+      expr: pg_replication_slots_active == 0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Postgresql unused replication slot (instance {{ $labels.instance }})"
+        description: "Unused Replication Slots\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: PostgresqlTooManyDeadTuples
+      expr: ((pg_stat_user_tables_n_dead_tup > 10000) / (pg_stat_user_tables_n_live_tup + pg_stat_user_tables_n_dead_tup)) >= 0.1 unless ON(instance) (pg_replication_is_replica == 1)
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Postgresql too many dead tuples (instance {{ $labels.instance }})"
+        description: "PostgreSQL dead tuples is too large\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: PostgresqlSplitBrain
+      expr: count(pg_replication_is_replica == 0) != 1
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "Postgresql split brain (instance {{ $labels.instance }})"
+        description: "Split Brain, too many primary Postgresql databases in read-write mode\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: PostgresqlPromotedNode
+      expr: pg_replication_is_replica and changes(pg_replication_is_replica[1m]) > 0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Postgresql promoted node (instance {{ $labels.instance }})"
+        description: "Postgresql standby server has been promoted as primary node\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: PostgresqlSslCompressionActive
+      expr: sum(pg_stat_ssl_compression) > 0
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "Postgresql SSL compression active (instance {{ $labels.instance }})"
+        description: "Database connections with SSL compression enabled. This may add significant jitter in replication delay. Replicas should turn off SSL compression via `sslcompression=0` in `recovery.conf`.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: PostgresqlTooManyLocksAcquired
+      expr: ((sum (pg_locks_count)) / (pg_settings_max_locks_per_transaction * pg_settings_max_connections)) > 0.20
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "Postgresql too many locks acquired (instance {{ $labels.instance }})"
+        description: "Too many locks acquired on the database. If this alert happens frequently, we may need to increase the postgres setting max_locks_per_transaction.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"

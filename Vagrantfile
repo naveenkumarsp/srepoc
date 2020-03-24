@@ -9,7 +9,7 @@ Vagrant.configure(2) do |config|
   servers=[
     {
       :hostname => "prometheus",
-      :box => "bento/ubuntu-16.04",
+      :box => "bento/ubuntu-18.04",
       :ip => "192.168.99.10",
       :port => 50001,
       :ram => 1024,
@@ -17,7 +17,7 @@ Vagrant.configure(2) do |config|
     },
     {
       :hostname => "grafana",
-      :box => "bento/ubuntu-16.04",
+      :box => "bento/ubuntu-18.04",
       :ip => "192.168.99.11",
       :port => 50002,
       :ram => 512,
@@ -26,7 +26,7 @@ Vagrant.configure(2) do |config|
 
     {
       :hostname => "rundeck",
-      :box => "bento/ubuntu-16.04",
+      :box => "bento/ubuntu-18.04",
       :ip => "192.168.99.12",
       :port => 50003,
       :ram => 2024,
@@ -34,7 +34,7 @@ Vagrant.configure(2) do |config|
     },
     {
       :hostname => "appserver1",
-      :box => "bento/ubuntu-16.04",
+      :box => "bento/ubuntu-18.04",
       :ip => "192.168.99.21",
       :port => 50004,
       :ram => 512,
@@ -42,7 +42,7 @@ Vagrant.configure(2) do |config|
     },
     {
       :hostname => "appserver2",
-      :box => "bento/ubuntu-16.04",
+      :box => "bento/ubuntu-18.04",
       :ip => "192.168.99.22",
       :port => 50005,
       :ram => 512,
@@ -50,17 +50,17 @@ Vagrant.configure(2) do |config|
     },
     {
       :hostname => "dbserver1",
-      :box => "bento/ubuntu-16.04",
+      :box => "bento/ubuntu-18.04",
       :ip => "192.168.99.23",
       :port => 50006,
       :ram => 1024,
       :cpu => 1
     },
-	{
-      :hostname => "bootstrap",
-      :box => "bento/ubuntu-16.04",
-      :ip => "192.168.99.5",
-      :port => 50000,
+    {
+      :hostname => "jaeger",
+      :box => "bento/ubuntu-18.04",
+      :ip => "192.168.99.13",
+      :port => 50007,
       :ram => 1024,
       :cpu => 1
     }
@@ -88,17 +88,5 @@ Vagrant.configure(2) do |config|
         vb.cpus = machine[:cpu]
       end
     end
-  end
-  if File.exists?(File.join(Dir.home, ".ssh" , "id_rsa.pub"))
-      ssh_key= File.read(File.join(Dir.home, ".ssh","id_rsa.pub"))
-     
-           config.vm.provision :shell, :inline =>"
-           echo 'Copying Local Ssh Keys to the VM For Provisioning'
-           mkdir -p /home/vagrant/.ssh
-           chmod -R 750 /home/vagrant/.ssh
-           echo '#{ssh_key}' >> /home/vagrant/.ssh/authorized_keys && chmod -R 644 /home/vagrant/.ssh/authorized_keys          
-           ", privileged: false
-  else
-      raise Vagrant::Errors::VagrantError, "\n SSH keys Not Found"
   end
 end

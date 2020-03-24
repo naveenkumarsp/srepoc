@@ -1,0 +1,11 @@
+[Unit]
+Description=hotrodapp
+
+[Service]
+Type=simple
+Restart=on-success
+RestartSec=5s
+ExecStart=/usr/local/go/bin/go run /vagrant/applications/hotrod/main.go all
+
+[Install]
+WantedBy=multi-user.target

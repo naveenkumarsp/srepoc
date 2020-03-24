@@ -3,7 +3,7 @@
 # ===========================================================================
 #   Install eqstraining application
 # ===========================================================================
-- hosts: rundeck
+- hosts: appserver1
   become: true
   tasks:
     - name: "Ensure system package cache is updated."
@@ -16,7 +16,14 @@
       vars:
         packages:
           - openjdk-8-jdk
-          - rundeck
+
+    - name: Copy the service file
+      copy:
+        src: eqstraining/eqstraining.service
+        dest: /lib/systemd/system/eqstraining.service
+        owner: vagrant 
+        group: vagrant
+        mode: 0755
 
     - name: "Ensure the eqs is started and starts at host boot."
       service:
